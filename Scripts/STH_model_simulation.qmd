@@ -44,7 +44,7 @@ set.seed(123)
 Choose time step and length of simulation.
 ```{r}
 dt <- 1/12 # time step in years (monthly)
-T  <- 200*(1/12) # number of time steps (200 years)
+T  <- 200*(1/dt) # number of time steps (200 years)
 time <- 0 # inital time
 ```
 
