@@ -1,0 +1,172 @@
+"subcounty","county","subcountyID"
+"Bomet Central","Bomet",10
+"Bomet East","Bomet",11
+"Chepalungu","Bomet",22
+"Konoin","Bomet",79
+"Sotik","Bomet",146
+"Bumula","Bungoma",16
+"Kabuchai","Bungoma",46
+"Kanduyi","Bungoma",49
+"Kimilili","Bungoma",61
+"Mt. Elgon","Bungoma",107
+"Sirisia","Bungoma",145
+"Tongaren","Bungoma",157
+"Webuye East","Bungoma",167
+"Webuye West","Bungoma",168
+"Budalangi","Busia",15
+"Butula","Busia",20
+"Funyula","Busia",33
+"Matayos","Busia",99
+"Nambale","Busia",118
+"Teso North","Busia",154
+"Teso South","Busia",155
+"Gachoka","Embu",34
+"Manyatta","Embu",97
+"Runyenjes","Embu",138
+"Siakago","Embu",143
+"Balambala","Garissa",5
+"Dadaab","Garissa",25
+"Dujis","Garissa",26
+"Fafi","Garissa",32
+"Ijara","Garissa",42
+"Lagdera","Garissa",83
+"Homa Bay","Homa Bay",41
+"Kabondo Kasipul","Homa Bay",45
+"Karachuonyo","Homa Bay",51
+"Kasipul","Homa Bay",52
+"Ndhiwa","Homa Bay",125
+"Rangwe","Homa Bay",135
+"Suba North","Homa Bay",148
+"Suba South","Homa Bay",149
+"Butere","Kakamega",19
+"Ikolomani","Kakamega",43
+"Khwisero","Kakamega",54
+"Likuyani","Kakamega",87
+"Lugari","Kakamega",89
+"Lurambi","Kakamega",91
+"Malava","Kakamega",95
+"Matungu","Kakamega",101
+"Mumias East","Kakamega",109
+"Mumias West","Kakamega",110
+"Navakholo","Kakamega",124
+"Shinyalu","Kakamega",142
+"Ainamoi","Kericho",1
+"Belgut","Kericho",6
+"Buret","Kericho",18
+"Kipkelion East","Kericho",64
+"Kipkelion West","Kericho",65
+"Sigowet/Soin","Kericho",144
+"Ganze","Kilifi",36
+"Kaloleni","Kilifi",48
+"Kilifi North","Kilifi",58
+"Kilifi South","Kilifi",59
+"Magarini","Kilifi",93
+"Malindi","Kilifi",96
+"Rabai","Kilifi",134
+"Gichugu","Kirinyaga",39
+"Kirinyaga Central","Kirinyaga",66
+"Mwea","Kirinyaga",114
+"Ndia","Kirinyaga",126
+"Bobasi","Kisii",7
+"Bomachoge Borabu","Kisii",8
+"Bomachoge Chache","Kisii",9
+"Bonchari","Kisii",12
+"Kitutu Chache North","Kisii",76
+"Kitutu Chache South","Kisii",77
+"Nyaribari Chache","Kisii",131
+"Nyaribari Masaba","Kisii",132
+"South Mugirango","Kisii",147
+"Kisumu Central","Kisumu",68
+"Kisumu East","Kisumu",69
+"Kisumu West","Kisumu",70
+"Muhoroni","Kisumu",108
+"Nyakach","Kisumu",128
+"Nyando","Kisumu",130
+"Seme","Kisumu",141
+"Kitui Central","Kitui",71
+"Kitui East","Kitui",72
+"Kitui Rural","Kitui",73
+"Kitui South","Kitui",74
+"Kitui West","Kitui",75
+"Mwingi East","Kitui",115
+"Mwingi North","Kitui",116
+"Mwingi West","Kitui",117
+"Kinango","Kwale",63
+"Lunga Lunga","Kwale",90
+"Matuga","Kwale",100
+"Msambweni","Kwale",106
+"Lamu East","Lamu",84
+"Lamu West","Lamu",85
+"Kangundo","Machakos",50
+"Kathiani","Machakos",53
+"Machakos Town","Machakos",92
+"Masinga","Machakos",98
+"Matungulu","Machakos",102
+"Mavoko","Machakos",103
+"Mwala","Machakos",112
+"Yatta","Machakos",171
+"Kaiti","Makueni",47
+"Kibwezi East","Makueni",55
+"Kibwezi West","Makueni",56
+"Kilome","Makueni",60
+"Makueni","Makueni",94
+"Mbooni","Makueni",104
+"Awendo","Migori",4
+"Kuria East","Migori",80
+"Kuria West","Migori",81
+"Nyatike","Migori",133
+"Rongo","Migori",137
+"Suna East","Migori",150
+"Suna West","Migori",151
+"Uriri","Migori",160
+"Changamwe","Mombasa",21
+"Jomvu","Mombasa",44
+"Kisauni","Mombasa",67
+"Likoni","Mombasa",86
+"Mvita","Mombasa",111
+"Nyali","Mombasa",129
+"Aldai","Nandi",2
+"Chesumei","Nandi",24
+"Emgwen","Nandi",28
+"Mosop","Nandi",105
+"Nandi Hills","Nandi",119
+"Tinderet","Nandi",156
+"Emurua Dikirr","Narok",30
+"Kilgoris","Narok",57
+"Narok East","Narok",120
+"Narok North","Narok",121
+"Narok South","Narok",122
+"Narok West","Narok",123
+"Borabu","Nyamira",14
+"Kitutu Masaba","Nyamira",78
+"North Mugirango","Nyamira",127
+"West Mugirango","Nyamira",169
+"Alego Usonga","Siaya",3
+"Bondo","Siaya",13
+"Gem","Siaya",38
+"Rarieda","Siaya",136
+"Ugenya","Siaya",158
+"Ugunja","Siaya",159
+"Mwatate","Taita Taveta",113
+"Taveta","Taita Taveta",153
+"Voi","Taita Taveta",162
+"Wundanyi","Taita Taveta",170
+"Bura","Tana River",17
+"Galole","Tana River",35
+"Garsen","Tana River",37
+"Cherangany","Trans Nzoia",23
+"Endebess","Trans Nzoia",31
+"Kiminini","Trans Nzoia",62
+"Kwanza","Trans Nzoia",82
+"Saboti","Trans Nzoia",140
+"Emuhaya","Vihiga",29
+"Hamisi","Vihiga",40
+"Luanda","Vihiga",88
+"Sabatia","Vihiga",139
+"Vihiga","Vihiga",161
+"Eldas","Wajir",27
+"Tarbaj","Wajir",152
+"Wajir East","Wajir",163
+"Wajir North","Wajir",164
+"Wajir South","Wajir",165
+"Wajir West","Wajir",166
