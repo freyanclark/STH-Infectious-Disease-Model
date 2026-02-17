@@ -216,7 +216,7 @@ params <- list(
   E_half = c(ASC = 50, TT = 40, HKW = 30),
   
   ## rate of adult worm establishment 
-  lambda = c(ASC = 1.2, TT = 0.7, HKW = 3.0),
+  lambda = c(ASC = 1.2, TT = 1.1, HKW = 3.0),
   
   # drug efficacies (egg reduction rates) by species
   kappa = list(
