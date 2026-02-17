@@ -196,8 +196,8 @@ params <- list(
   gamma = c(ASC = 0.667, TT = 0.667, HKW = 0.5),    
   
   ## decay of infectious pressure 
-  ## mu = ln(2) / half life (half life ASC:8m, TT:5.5m, HKW:4m)
-  mu = c(ASC = (log(2)/(8/12)), 
+  ## mu = ln(2) / half life (half life ASC:7m, TT:5.5m, HKW:4m)
+  mu = c(ASC = (log(2)/(7/12)), 
          TT = (log(2)/(5.5/12)), 
          HKW = (log(2)/(4/12))),   
   
@@ -216,7 +216,7 @@ params <- list(
   E_half = c(ASC = 50, TT = 40, HKW = 30),
   
   ## rate of adult worm establishment 
-  lambda = c(ASC = 1.1, TT = 0.9, HKW = 2.8),
+  lambda = c(ASC = 1.2, TT = 0.7, HKW = 3.0),
   
   # drug efficacies (egg reduction rates) by species
   kappa = list(
