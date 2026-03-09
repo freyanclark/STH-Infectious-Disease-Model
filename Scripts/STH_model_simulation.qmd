@@ -41,10 +41,9 @@ set.seed(123)
 ```
 
 # Initialising Simulation
-Choose time step and length of simulation.
+Choose time step.
 ```{r}
 dt <- 1/12 # time step in years (monthly)
-T  <- 200*(1/dt) # number of time steps (200 years)
 time <- 0 # inital time
 ```
 
@@ -203,20 +202,19 @@ params <- list(
   
   # FOI saturation
   ## IU-specific infectivity for each IU
-  ## can be changed based on WASH data/calibrated with data
-  sigma = c(ASC = 0.1, TT = 0.1, HKW = 0.1),  
+  sigma = rep(0.1, n_IU),
   
   ## individual worm saturation
   W_half = c(ASC = 7, TT = 50, HKW = 35),
   
   ## density dependence for egg contribution from heavy infections 
-  egg_half   = c(ASC = 7, TT = 40, HKW = 30),
+  egg_half   = c(ASC = 7, TT = 26, HKW = 30),
   
   ## saturation of environment
   E_half = c(ASC = 50, TT = 40, HKW = 30),
   
   ## rate of adult worm establishment 
-  lambda = c(ASC = 1.2, TT = 1.1, HKW = 3.0),
+  lambda = c(ASC = 1.2, TT = 1.51, HKW = 3.0),
   
   # drug efficacies (egg reduction rates) by species
   kappa = list(
@@ -230,11 +228,13 @@ params <- list(
   ## fraction of time spent in each IU (alpha)
   movement_matrix = matrix(
     c(0.7,0.2,0.1,
-      0.2,0.6,0.2,
-      0.1,0.2,0.7),
+      0.3,0.6,0.1,
+      0.0,0.2,0.8),
     nrow = n_IU, byrow = TRUE
   )
 )
+
+names(params$sigma) <- paste0("IU", 1:n_IU)
 
 # age-dependent susceptibility
 beta_filtered <- subset(beta_infer, age_group != "Newborn")
@@ -245,6 +245,26 @@ params$beta <- params$beta[species]
 
 # age-dependent contribution to environment
 params$rho <- params$beta
+```
+
+Plot movement matrix ($\alpha$).
+```{r}
+# convert matrix to long format
+alpha_df <- melt(params$movement_matrix)
+
+colnames(alpha_df) <- c("Home_IU", "Visited_IU", "fraction")
+
+ggplot(alpha_df, aes(x = Visited_IU, y = Home_IU, fill = fraction)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(fraction, 2)), size = 4) +
+  scale_fill_gradient(low = "white", high = "#2C7FB8") +
+  labs(
+    x = "IU visited",
+    y = "Home IU",
+    fill = "Fraction\nof time",
+    title = expression("Movement matrix, (" * alpha * ")")
+  ) +
+  theme_minimal()
 ```
 
 # Defining functions
@@ -298,7 +318,12 @@ initialise_infection_vec <- function(pop, prev_SAC_IU_data, params, env_scale = 
 
 Update demography.
 ```{r}
-update_demography <- function(pop, W, params){
+update_demography <- function(pop, W, params, demography = TRUE){
+  
+  # if demography disabled, return unchanged
+  if(!demography){
+    return(list(pop = pop, W = W))
+  }
   
   dt <- params$dt
   
@@ -375,27 +400,6 @@ update_worms <- function(pop, W, E, alpha, params){
   n  <- nrow(W)
   species <- params$species
   
-  beta_mat <- sapply(
-    species,
-    function(s) params$beta[[s]][pop$age_group]
-  )
-  
-  # alpha * E * sigma * beta
-  exposure_env <- alpha %*% E
-  
-  sigma_mat <- matrix(params$sigma[pop$IU_home], nrow = n, ncol = length(species))
-  exposure <- exposure_env * sigma_mat * beta_mat
-  
-  # within-host density dependence
-  f_host <- sweep(
-    W, 2, params$W_half,
-    function(w, k) 1 / (1 + w / k)
-  )
-  
-  # infection probability
-  p_inf <- 1 - exp(-exposure * f_host * dt)
-  p_inf <- pmin(p_inf, 1)
-  
   # worm survival
   surv_p <- unname(exp(-params$gamma * dt))
   
@@ -405,6 +409,35 @@ update_worms <- function(pop, W, E, alpha, params){
            prob = rep(surv_p, each = n)),
     nrow = n
   )
+  
+  # age-dependent susceptibility
+  beta_mat <- sapply(
+    species,
+    function(s) params$beta[[s]][pop$age_group]
+  )
+  
+  # alpha * E * sigma * beta
+  exposure_env <- alpha %*% E
+  
+  sigma_vec <- params$sigma[pop$IU_home]
+  
+  sigma_mat <- matrix(
+    rep(sigma_vec, length(species)),
+    nrow = n,
+    ncol = length(species)
+  )
+  
+  exposure <- exposure_env * sigma_mat * beta_mat
+  
+  # within-host density dependence
+  f_host <- sweep(
+    W_surv, 2, params$W_half,
+    function(w, k) 1 / (1 + w / k)
+  )
+  
+  # infection probability
+  p_inf <- 1 - exp(-exposure * f_host * dt)
+  p_inf <- pmin(p_inf, 1)
   
   # acquired worms
   W_new <- matrix(
@@ -428,6 +461,10 @@ update_environment <- function(pop, W, E, alpha, params){
   
   dt <- params$dt
   
+  # surviving environmental pressure
+  mu_vec <- unname(params$mu)
+  E_surv <- sweep(E, 2, exp(-mu_vec*dt), "*")
+  
   # age-dependent egg contribution
   rho_mat <- sapply(
     params$species,
@@ -449,10 +486,6 @@ update_environment <- function(pop, W, E, alpha, params){
   lambda_env <- contrib / (1 + contrib / matrix(rep(params$E_half, 
                                                     each = nrow(contrib)), 
                                                 nrow=nrow(contrib)))
-  
-  # surviving environmental pressure
-  mu_vec <- unname(params$mu)
-  E_surv <- sweep(E, 2, exp(-mu_vec*dt), "*")
   
   # new environmental pressure
   E_new <- lambda_env * dt
@@ -511,10 +544,10 @@ apply_treatment <- function(pop, W, treatment_schedule, t, params){
 
 Single time step.
 ```{r}
-step_model <- function(state, params, t, treatment_schedule){
+step_model <- function(state, params, t, treatment_schedule, demography = TRUE){
   
   # 1. demography
-  demog <- update_demography(state$pop, state$W, params)
+  demog <- update_demography(state$pop, state$W, params, demography)
   pop <- demog$pop
   W   <- demog$W
   
@@ -541,7 +574,7 @@ equilibrium_prevalence <- function(params,
                                    pop_init,
                                    W_init,
                                    E_init,
-                                   T_eq = 2400,
+                                   T_eq = 6000,
                                    return_state = FALSE){
   
   # initialise population
@@ -549,7 +582,7 @@ equilibrium_prevalence <- function(params,
   
   # run model with no treatment for T_eq time steps (until equilibrium)
   for(t in 1:T_eq){ 
-    state <- step_model(state, params, t, treatment_schedule = NULL) 
+    state <- step_model(state, params, t, treatment_schedule = NULL, demography = FALSE) 
   }
   
   # return equilibrium state (pop, W, E) if return_state = TRUE
@@ -574,7 +607,7 @@ calibrate_sigma <- function(params,
                             W_init,
                             E_init,
                             target_prev,
-                            sigma_bounds = c(0.005, 0.2)){
+                            sigma_bounds = c(0.005, 0.999)){
   
   sigma_new <- params$sigma # update sigma
   
@@ -607,8 +640,9 @@ calibrate_sigma <- function(params,
       
       prev_target <- target_prev[iu, ]
       
-      # sum of squared errors across all species
-      sum((prev_model - prev_target)^2)
+      # sum of squared relative errors across all species 
+      # (scaled by target prevalence to prevent higher prev species from dominating)
+      sum(((prev_model - prev_target) / prev_target)^2)
     }
     
     # optimise sigma to minimise squared error 
@@ -616,7 +650,7 @@ calibrate_sigma <- function(params,
       obj_fn, 
       interval=log(sigma_bounds))
     
-    # store optimal beta value for current species
+    # store optimal sigma for current IU
     sigma_new[iu] <- exp(opt$minimum)
   }
   
@@ -666,15 +700,21 @@ params$sigma
 
 # store equilibrium state
 state_eq <- equilibrium_prevalence(params, pop, W, E, return_state=TRUE)
+
+# check population size stays the same
+sum(pop$alive) # start
+sum(state_eq$pop$alive) # end
 ```
 
 ## Baseline simulation
 ```{r}
+T  <- 30*(1/dt) # number of time steps (30 years)
+
 # pre-allocate list to store results
 results <- vector("list", T)  # length = number of timesteps
 
 # initial state
-state <- list(pop = pop, W = W, E = state_eq$E) # initialise with equilibrium E
+state <- list(pop = state_eq$pop, W = state_eq$W, E = state_eq$E) # initialise with equilibrium
 
 set.seed(123)
 for(t in 1:T){
@@ -694,19 +734,30 @@ Prepare results.
 # find SAC prevalence (total and IU level)
 SAC_groups <- c("SAC:5-9", "SAC:10-14")
 
+species_all <- c(species, "anySTH")
+n_species_all <- length(species_all)
+
 ## total SAC prevalence
 prev_SAC <- sapply(results, function(state) {
   
   sac_idx <- state$pop$age_group %in% SAC_groups & state$pop$alive
-  if (sum(sac_idx) == 0) return(rep(0, n_species))
+  if (sum(sac_idx) == 0) return(rep(0, n_species_all))
   
   W_sac <- state$W[sac_idx, , drop = FALSE]
-  colSums(W_sac > 0) / nrow(W_sac)
+  
+  # species prevalence
+  prev_species <- colSums(W_sac > 0) / nrow(W_sac)
+  
+  # any STH prevalence
+  anySTH <- rowSums(W_sac > 0) > 0
+  prev_anySTH <- mean(anySTH)
+  
+  c(prev_species, anySTH = prev_anySTH)
 })
 
 ### timesteps × species
 prev_SAC <- t(prev_SAC)
-colnames(prev_SAC) <- species
+colnames(prev_SAC) <- species_all
 
 
 ## IU level SAC prevalence
@@ -716,8 +767,8 @@ prev_SAC_IU <- lapply(results, function(state) {
   
   if (sum(sac_idx) == 0) {
     return(matrix(
-      0, nrow = n_IU, ncol = n_species,
-      dimnames = list(paste0("IU", 1:n_IU), species)
+      0, nrow = n_IU, ncol = n_species_all,
+      dimnames = list(paste0("IU", 1:n_IU), species_all)
     ))
   }
   
@@ -727,9 +778,16 @@ prev_SAC_IU <- lapply(results, function(state) {
   sapply(1:n_IU, function(iu) {
     
     in_IU <- pop_sac$IU_home == iu
-    if (sum(in_IU) == 0) return(rep(0, n_species))
+    if (sum(in_IU) == 0) return(rep(0, n_species_all))
     
-    colSums(W_sac[in_IU, , drop = FALSE] > 0) / sum(in_IU)
+    W_sub <- W_sac[in_IU, , drop = FALSE]
+    
+    prev_species <- colSums(W_sub > 0)/nrow(W_sub)
+    
+    anySTH <- rowSums(W_sub > 0) > 0
+    prev_anySTH <- mean(anySTH)
+    
+    c(prev_species, anySTH = prev_anySTH)
   })
 })
 
@@ -740,7 +798,7 @@ prev_SAC_IU <- aperm(prev_SAC_IU, c(3, 2, 1))
 dimnames(prev_SAC_IU) <- list(
   time = 1:T,
   IU = paste0("IU", 1:n_IU),
-  species = species
+  species = species_all
 )
 ```
 
@@ -754,13 +812,15 @@ treatment_times <- unique(treatment_schedule$time) * dt
 species_cols <- c(
   "ASC" = "#A23B32",
   "TT"  = "#7BB6C4",
-  "HKW" = "#E8C263" 
+  "HKW" = "#E8C263",
+  "anySTH" = "#313545"
 )
 
 species_labs <- c(
   "ASC" = expression(italic("A. lumbricoides")),
   "TT"  = expression(italic("T. trichiura")),
-  "HKW" = "Hookworm"
+  "HKW" = "Hookworm",
+  "anySTH" = "Any STH"
 )
 ```
 
@@ -785,7 +845,6 @@ ggplot(df_overall, aes(x = time, y = prevalence, color = species)) +
     limits = c(0, 1),
     labels = scales::percent_format(accuracy = 1)
   ) +
-  coord_cartesian(xlim = c(0, 200)) +
   labs(
     x = "Time (years)",
     y = "SAC prevalence (%)",
@@ -824,77 +883,84 @@ ggplot(df_IU, aes(x = time, y = prevalence, color = species)) +
   theme_minimal()
 ```
 
-Plot baseline equilibrium at population-level SAC prevalence for entire simulation.
+Plot total population size for entire simulation.
 ```{r}
-# Plot year 100 to 150
-ggplot(df_overall, aes(x = time, y = prevalence, color = species)) +
-  geom_line(linewidth = 0.8) +
-  scale_color_manual(
-    name   = "STH species",
-    values = species_cols,
-    labels = species_labs
-  ) +
-  scale_y_continuous(
-    limits = c(0, 1),
-    labels = scales::percent_format(accuracy = 1)
-  ) +
-  coord_cartesian(xlim = c(100, 150)) + # select 100 to 150 years on axis
-  scale_x_continuous( # change labels to 0 to 50
-    labels = function(x) x - 100,
-    breaks = seq(100, 150, by = 10)
-  ) +
+# total population size at each time step
+pop_size <- sapply(results, function(state){
+  sum(state$pop$alive)
+})
+
+df_pop <- data.frame(
+  time = seq_along(pop_size) * dt,
+  population = pop_size
+)
+
+ggplot(df_pop, aes(x = time, y = population)) +
+  geom_line(linewidth = 0.9, color = "#2C7FB8") +
   labs(
     x = "Time (years)",
-    y = "SAC prevalence (%)",
-    title = "SAC prevalence over time (entire study area)"
+    y = "Population size",
+    title = "Population size over time"
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1500)
   ) +
   theme_minimal()
 ```
 
-Plot baseline equilibrium at IU-level SAC prevalence for entire simulation.
+Plot IU-level population size for entire simulation.
 ```{r}
-ggplot(df_IU, aes(x = time, y = prevalence, color = species)) +
-  geom_line(linewidth = 0.8) +
-  scale_color_manual(
-    name   = "STH species",
-    values = species_cols,
-    labels = species_labs
-  ) +
-  scale_y_continuous(
-    limits = c(0, 1),
-    labels = scales::percent_format(accuracy = 1)
-  ) +
-  coord_cartesian(xlim = c(100, 150)) + # select 100 to 150 years on axis
-  scale_x_continuous( # change labels to 0 to 50
-    labels = function(x) x - 100,
-    breaks = seq(100, 150, by = 10)
-  ) +
+# IU-level population size at each time step
+pop_IU <- lapply(results, function(state){
+  
+  alive_pop <- state$pop[state$pop$alive, ]
+  
+  counts <- table(factor(alive_pop$IU_home, levels = 1:n_IU))
+  
+  data.frame(
+    IU = paste0("IU", 1:n_IU),
+    population = as.numeric(counts)
+  )
+})
+
+pop_IU <- do.call(rbind, pop_IU)
+
+pop_IU$time <- rep(seq_len(T) * dt, each = n_IU)
+
+ggplot(pop_IU, aes(x = time, y = population)) +
+  geom_line(color = "#2C7FB8", linewidth = 0.9) +
   facet_wrap(~ IU, ncol = 1) +
   labs(
     x = "Time (years)",
-    y = "SAC prevalence (%)",
-    title = "SAC prevalence over time (IU level)"
+    y = "Population size",
+    title = "Population size over time by IU"
+  ) +
+  scale_y_continuous(
+    limits = c(0, 500)
   ) +
   theme_minimal()
 ```
+
 
 ## Treatment simulation
 Add treatment schedule.
 ```{r}
 treatment_schedule <- data.frame(
-  time = c(105/dt, 105/dt, 106/dt, 106/dt, 106/dt, 107/dt, 107/dt),  # timestep of treatment
-  IU   = c(1, 2, 1, 2, 3, 1, 3), # IU receiving treatment
-  tau  = c(0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8), # coverage for SACs
-  drug = c("Albendazole", "Albendazole", "Albendazole", "Albendazole", "Albendazole", "Albendazole", "Albendazole")
+  time = c(5/dt, 5/dt, 6/dt, 6/dt, 7/dt, 8/dt),  # time step of treatment
+  IU   = c(rep(c(1, 2), 2), rep(1, 2)), # IU receiving treatment
+  tau  = rep(0.75, 6), # coverage for SACs
+  drug = rep("Albendazole", 6)
 )
 ```
 
 ```{r}
+T  <- 30*(1/dt) # number of time steps (30 years)
+
 # pre-allocate list to store results
 results <- vector("list", T)  # length = number of timesteps
 
 # initial state
-state <- list(pop = pop, W = W, E = state_eq$E) # initialise with equilibrium E
+state <- list(pop = state_eq$pop, W = state_eq$W, E = state_eq$E) # initialise with equilibrium
 
 set.seed(123)
 for(t in 1:T){
@@ -914,19 +980,30 @@ Prepare results.
 # find SAC prevalence (total and IU level)
 SAC_groups <- c("SAC:5-9", "SAC:10-14")
 
+species_all <- c(species, "anySTH")
+n_species_all <- length(species_all)
+
 ## total SAC prevalence
 prev_SAC <- sapply(results, function(state) {
   
   sac_idx <- state$pop$age_group %in% SAC_groups & state$pop$alive
-  if (sum(sac_idx) == 0) return(rep(0, n_species))
+  if (sum(sac_idx) == 0) return(rep(0, n_species_all))
   
   W_sac <- state$W[sac_idx, , drop = FALSE]
-  colSums(W_sac > 0) / nrow(W_sac)
+  
+  # species prevalence
+  prev_species <- colSums(W_sac > 0) / nrow(W_sac)
+  
+  # any STH prevalence
+  anySTH = rowSums(W_sac > 0) > 0
+  prev_anySTH <- mean(anySTH)
+  
+  c(prev_species, anySTH = prev_anySTH)
 })
 
 ### timesteps × species
 prev_SAC <- t(prev_SAC)
-colnames(prev_SAC) <- species
+colnames(prev_SAC) <- species_all
 
 
 ## IU level SAC prevalence
@@ -936,8 +1013,8 @@ prev_SAC_IU <- lapply(results, function(state) {
   
   if (sum(sac_idx) == 0) {
     return(matrix(
-      0, nrow = n_IU, ncol = n_species,
-      dimnames = list(paste0("IU", 1:n_IU), species)
+      0, nrow = n_IU, ncol = n_species_all,
+      dimnames = list(paste0("IU", 1:n_IU), species_all)
     ))
   }
   
@@ -947,9 +1024,16 @@ prev_SAC_IU <- lapply(results, function(state) {
   sapply(1:n_IU, function(iu) {
     
     in_IU <- pop_sac$IU_home == iu
-    if (sum(in_IU) == 0) return(rep(0, n_species))
+    if (sum(in_IU) == 0) return(rep(0, n_species_all))
     
-    colSums(W_sac[in_IU, , drop = FALSE] > 0) / sum(in_IU)
+    W_sub <- W_sac[in_IU, , drop = FALSE]
+    
+    prev_species <- colSums(W_sub > 0)/nrow(W_sub)
+    
+    anySTH <- rowSums(W_sub > 0) > 0
+    prev_anySTH <- mean(anySTH)
+    
+    c(prev_species, anySTH = prev_anySTH)
   })
 })
 
@@ -960,13 +1044,30 @@ prev_SAC_IU <- aperm(prev_SAC_IU, c(3, 2, 1))
 dimnames(prev_SAC_IU) <- list(
   time = 1:T,
   IU = paste0("IU", 1:n_IU),
-  species = species
+  species = species_all
 )
 ```
 
-Prepare treatment for plotting.
+Prepare time for plotting.
 ```{r}
+time_vec <- seq(dt, T * dt, by = dt)
+
 treatment_times <- unique(treatment_schedule$time) * dt
+
+# labels and colours
+species_cols <- c(
+  "ASC" = "#A23B32",
+  "TT"  = "#7BB6C4",
+  "HKW" = "#E8C263",
+  "anySTH" = "#313545"
+)
+
+species_labs <- c(
+  "ASC" = expression(italic("A. lumbricoides")),
+  "TT"  = expression(italic("T. trichiura")),
+  "HKW" = "Hookworm",
+  "anySTH" = "Any STH"
+)
 ```
 
 Plot treatment effect at population-level SAC prevalence.
@@ -976,10 +1077,10 @@ df_overall <- melt(
   varnames = c("time", "species"),
   value.name = "prevalence"
 )
+df_overall$species <- factor(df_overall$species, levels = names(species_cols))
 
 df_overall$time <- df_overall$time * dt
 
-# Plot year 100 to 115
 ggplot(df_overall, aes(x = time, y = prevalence, color = species)) +
   geom_line(linewidth = 0.8) +
   geom_vline(
@@ -1000,11 +1101,6 @@ ggplot(df_overall, aes(x = time, y = prevalence, color = species)) +
   scale_y_continuous(
     limits = c(0, 1),
     labels = scales::percent_format(accuracy = 1)
-  ) +
-  coord_cartesian(xlim = c(100, 115)) + # select 105 to 120 years on axis
-  scale_x_continuous( # change labels to 0 to 50
-    labels = function(x) x - 100,
-    breaks = seq(100, 115, by = 10)
   ) +
   labs(
     x = "Time (years)",
@@ -1049,11 +1145,6 @@ ggplot(df_IU, aes(x = time, y = prevalence, color = species)) +
   scale_y_continuous(
     limits = c(0, 1),
     labels = scales::percent_format(accuracy = 1)
-  ) +
-  coord_cartesian(xlim = c(100, 115)) + # select 100 to 115 years on axis
-  scale_x_continuous( # change labels to 0 to 50
-    labels = function(x) x - 100,
-    breaks = seq(100, 115, by = 10)
   ) +
   facet_wrap(~ IU, ncol = 1) +
   labs(
